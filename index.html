@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dictation App</title>
+    <link rel="stylesheet" href="/index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^0.8.0",
+          "marked": "https://esm.sh/marked@^4.0.0"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="app-container">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>My Notes</h2>
+        </div>
+        <div class="note-list-container">
+          <ul id="noteList" class="note-list">
+            <!-- Note items will be dynamically inserted here -->
+          </ul>
+        </div>
+        <div class="sidebar-footer">
+          <button id="clearAllNotesButton" class="button-secondary" title="Clear All Notes">
+            <i class="fas fa-trash-alt"></i> Clear All Notes
+          </button>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="note-area">
+          <div class="note-header">
+            <div class="editor-title-container">
+              <div id="editorTitle" class="editor-title" contenteditable="true" placeholder="Untitled Note">
+                Untitled Note
+              </div>
+            </div>
+            <div class="note-actions">
+              <button id="exportNoteButton" class="action-button-header" title="Export Note (Markdown)">
+                <i class="fas fa-download"></i>
+              </button>
+              <div class="tab-navigation-container">
+                <div class="tab-navigation">
+                  <button class="tab-button active" data-tab="note">Polished</button>
+                  <button class="tab-button" data-tab="raw">Raw</button>
+                  <div class="active-tab-indicator"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="note-content-wrapper">
+            <div
+              id="polishedNote"
+              class="note-content active"
+              contenteditable="true"
+              placeholder="Your polished notes will appear here..."
+            ></div>
+            <div
+              id="rawTranscription"
+              class="note-content"
+              contenteditable="true"
+              placeholder="Raw transcription will appear here..."
+            ></div>
+          </div>
+        </div>
+
+        <div class="recording-interface">
+          <div id="liveRecordingTitle" class="live-recording-title" style="display: none">
+            Recording
+          </div>
+          <canvas id="liveWaveformCanvas" style="display: none"></canvas>
+          <div id="liveRecordingTimerDisplay" class="live-recording-timer" style="display: none">
+            00:00.00
+          </div>
+
+          <div class="status-indicator">
+            <span id="recordingStatus" class="status-text">Ready to record</span>
+          </div>
+
+          <div class="recording-controls">
+            <button class="action-button" id="themeToggleButton" title="Toggle Theme">
+              <i class="fas fa-sun"></i>
+            </button>
+
+            <button id="recordButton" class="record-button" title="Start/Stop Recording">
+              <div class="record-button-inner">
+                <i class="fas fa-microphone"></i>
+              </div>
+              <svg class="record-waves" viewBox="0 0 200 200">
+                <circle class="wave wave1" cx="100" cy="100" r="40" />
+                <circle class="wave wave2" cx="100" cy="100" r="70" />
+                <circle class="wave wave3" cx="100" cy="100" r="100" />
+              </svg>
+              <span class="record-text">Record</span>
+            </button>
+
+            <button class="action-button" id="newButton" title="New Note">
+              <i class="fas fa-file-alt"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const tabNav = document.querySelector(".tab-navigation");
+        const tabButtons = tabNav.querySelectorAll(".tab-button");
+        const activeTabIndicator = tabNav.querySelector(".active-tab-indicator");
+        const noteContents = document.querySelectorAll(".note-content");
+
+        function setActiveTab(activeButton, skipAnimation = false) {
+          if (!activeButton || !activeTabIndicator) return;
+
+          tabButtons.forEach((btn) => btn.classList.remove("active"));
+          activeButton.classList.add("active");
+
+          const tabName = activeButton.getAttribute("data-tab");
+          noteContents.forEach((content) => {
+            content.classList.remove("active");
+            content.style.display = 'none'; // Ensure only active is block
+          });
+          
+          const activeContent = document.getElementById(tabName === "raw" ? "rawTranscription" : "polishedNote");
+          if (activeContent) {
+            activeContent.classList.add("active");
+            activeContent.style.display = 'block';
+          }
+
+
+          const originalTransition = activeTabIndicator.style.transition;
+          if (skipAnimation) {
+            activeTabIndicator.style.transition = "none";
+          } else {
+            activeTabIndicator.style.transition = ""; // Use CSS defined transition
+          }
+
+          activeTabIndicator.style.left = `${activeButton.offsetLeft}px`;
+          activeTabIndicator.style.width = `${activeButton.offsetWidth}px`;
+
+          if (skipAnimation) {
+            activeTabIndicator.offsetHeight; // Trigger reflow
+            activeTabIndicator.style.transition = originalTransition;
+          }
+        }
+
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", (e) => {
+            setActiveTab(e.currentTarget);
+          });
+        });
+        
+        function initializeTabs() {
+          const initiallyActiveButton = tabNav.querySelector(".tab-button.active") || tabButtons[0];
+          if (initiallyActiveButton) {
+             setActiveTab(initiallyActiveButton, true);
+          }
+        }
+        
+        requestAnimationFrame(initializeTabs);
+
+
+        window.addEventListener("resize", () => {
+          requestAnimationFrame(() => {
+            const currentActiveButton = tabNav.querySelector(".tab-button.active");
+            if (currentActiveButton) {
+              setActiveTab(currentActiveButton, true);
+            }
+          });
+        });
+      });
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
